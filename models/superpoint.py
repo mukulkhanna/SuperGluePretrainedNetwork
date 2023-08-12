@@ -168,7 +168,7 @@ class SuperPoint(nn.Module):
 
         # Extract keypoints
         keypoints = [
-            torch.nonzero(s > self.config['keypoint_threshold'])
+            torch.nonzero(s >= 0)
             for s in scores]
         scores = [s[tuple(k.t())] for s, k in zip(scores, keypoints)]
 
