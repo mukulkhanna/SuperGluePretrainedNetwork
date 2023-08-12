@@ -66,7 +66,10 @@ class Matching(torch.nn.Module):
             pred0 = self.superpoint({'image': data['image0']})
             pred = {**pred, **{k+'0': v for k, v in pred0.items()}}
         if 'keypoints1' not in data:
-            pred1 = self.superpoint({'image': data['image1']})
+            if isinstance(data['image1'], list):
+                pred1 = self.superpoint({'image': torch.vstack(data['image1'])})
+            else:
+                pred1 = self.superpoint({'image': data['image1']})
             pred = {**pred, **{k+'1': v for k, v in pred1.items()}}
 
         # Batch all features
@@ -76,7 +79,10 @@ class Matching(torch.nn.Module):
 
         for k in data:
             if isinstance(data[k], (list, tuple)):
-                data[k] = torch.stack(data[k])
+                if k == "image1":
+                    data[k] = torch.vstack(data[k])
+                else:
+                    data[k] = torch.stack(data[k])
 
         # Perform the matching
         pred = {**pred, **self.superglue(data)}

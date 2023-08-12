@@ -103,10 +103,13 @@ class MultiHeadedAttention(nn.Module):
 
     def forward(self, query: torch.Tensor, key: torch.Tensor, value: torch.Tensor) -> torch.Tensor:
         batch_dim = query.size(0)
-        query, key, value = [l(x).view(batch_dim, self.dim, self.num_heads, -1)
+        # query, key, value = [l(x).view(batch_dim, self.dim, self.num_heads, -1)
+        #                      for l, x in zip(self.proj, (query, key, value))]
+        query, key, value = [l(x).view(x.size(0), self.dim, self.num_heads, -1)
                              for l, x in zip(self.proj, (query, key, value))]
         x, _ = attention(query, key, value)
-        return self.merge(x.contiguous().view(batch_dim, self.dim*self.num_heads, -1))
+        # return self.merge(x.contiguous().view(batch_dim, self.dim*self.num_heads, -1))
+        return self.merge(x.contiguous().view(x.size(0), self.dim*self.num_heads, -1))
 
 
 class AttentionalPropagation(nn.Module):
@@ -118,6 +121,8 @@ class AttentionalPropagation(nn.Module):
 
     def forward(self, x: torch.Tensor, source: torch.Tensor) -> torch.Tensor:
         message = self.attn(x, source, source)
+        if x.size(0) != message.size(0):
+            x = torch.vstack([x] * message.size(0))
         return self.mlp(torch.cat([x, message], dim=1))
 
 
@@ -135,6 +140,7 @@ class AttentionalGNN(nn.Module):
                 src0, src1 = desc1, desc0
             else:  # if name == 'self':
                 src0, src1 = desc0, desc1
+            # import pdb;pdb.set_trace()
             delta0, delta1 = layer(desc0, src0), layer(desc1, src1)
             desc0, desc1 = (desc0 + delta0), (desc1 + delta1)
         return desc0, desc1
@@ -249,6 +255,7 @@ class SuperGlue(nn.Module):
         desc0 = desc0 + self.kenc(kpts0, data['scores0'])
         desc1 = desc1 + self.kenc(kpts1, data['scores1'])
 
+        # import pdb;pdb.set_trace()
         # Multi-layer Transformer network.
         desc0, desc1 = self.gnn(desc0, desc1)
 
